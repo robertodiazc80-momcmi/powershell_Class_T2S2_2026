@@ -15,6 +15,7 @@ $PSScriptRoot = Get-Location
 #Get-UserSummary -userAccountName "Guest" -showUserPasswordInfo $true
 
 #Show-MultipleServicesStatus -serviceNames "WinRm","vds","SmsRouter","Power"
+Show-MultipleServicesStatus -names "Spooler","BITS","wuauserv"
 
 
-Get-RunningService
+#Get-RunningService

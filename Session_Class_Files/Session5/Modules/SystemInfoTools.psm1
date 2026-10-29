@@ -1,7 +1,6 @@
 
 
-# This function is publically accessible.
-
+# This function is publicly accessible.
 function Get-All-My-ComputerInfo{
     
     param(    
@@ -29,8 +28,6 @@ function Fetch-ComputerInfo {
    return (Get-ComputerInfo | Select-Object $computerProperty)
 
 }
-
-
 
 
 function Get-MyName{

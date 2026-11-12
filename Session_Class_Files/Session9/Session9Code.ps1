@@ -61,7 +61,7 @@ else{
 
 }
 
-
+# This code is generally executed within the server's memory e.g. Invoke-Command in the server.
 
 $result = Invoke-Command -ComputerName 192.168.20.3 -Credential (Get-Credential) -ScriptBlock {
 

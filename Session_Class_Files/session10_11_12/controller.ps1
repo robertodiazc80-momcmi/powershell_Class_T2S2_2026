@@ -423,6 +423,7 @@ OU=HR,DC=nwk428pss,DC=local
 New-GPLink -Name $gpoName -Target "OU=HR,$((Get-ADDomain).DistinguishedName)"
 
 
+
 function configure-dhcp-service{
 
     $networkIp = "192.168.20.0"
@@ -437,7 +438,7 @@ function configure-dhcp-service{
     
     }
     
-    <#
+
     function get-dhcp-windowsFeature{
     
         $feature = Get-WindowsFeature -Name DHCP
@@ -448,7 +449,7 @@ function configure-dhcp-service{
         }    
     
     }
-    #>
+
 
     function authorize-this-server{    
         Add-DhcpServerInDC -dnsname ((Get-ADDomain).InfrastructureMaster) `
@@ -458,9 +459,9 @@ function configure-dhcp-service{
 
     function set-ipranges-forClients{
             
-        Add-DhcpServerv4Scope -Name "192.168.20.0" `
-        -StartRange "192.168.20.150" `
-        -EndRange "192.168.20.200" `
+        Add-DhcpServerv4Scope -Name "ClientIPaddresses" `
+        -StartRange "192.168.20.20" `
+        -EndRange "192.168.20.30" `
         -SubnetMask "255.255.255.0" `
         -State Active
           
@@ -468,20 +469,21 @@ function configure-dhcp-service{
     }
 
     function set-dhcp-client-option{
-        
-        -scopeid $networkIp `
-        -dnsserver (get-this-srvrIPAddr) `
-        -dnsDomain ((Get-ADForest).rootdomain)
+
+        Set-DhcpServerv4OptionValue `
+        -ScopeId $networkIp `       
+        -DnsServer $(get-this-srvrIPAddr) `
+        -dnsDomain ((Get-ADForest).RootDomain)
     
     }
 
     # called 1st
-    #write-host "Running install windows feature"
-    #get-dhcp-windowsFeature
+    write-host "Running install windows feature"
+    get-dhcp-windowsFeature
     
     # called 2nd
-    #write-host "Running authorize"
-    #authorize-this-server
+    write-host "Running authorize"
+    authorize-this-server
     
     # called 3rd
     write-host "Running ipranges"
@@ -493,32 +495,67 @@ function configure-dhcp-service{
 
     # called 5th
     write-host "restarting"
-    Restart-Service dhcp
+    #Restart-Service dhcp
 
 }
 
 
-configure-dhcp-service
+
+
+#configure-dhcp-service
 
 
 
-    get-dhcp-windowsFeature
-    
-    # called 2nd
-    authorize-this-server
-    
-    # called 3rd
-    set-ipranges-forClients
+function create-task{
 
-    # called 4th 
-    set-dhcp-client-option
+    $actionToBePerformed = New-ScheduledTaskAction `
+    -Execute "powershell.exe" `
+    -Argument "-executionPolicy ByPass -File C:\sourceDirectory\taskToRun.ps1"
 
-    # called 5th
-    Restart-Service dhcp
+
+    $taskTrigger = New-ScheduledTaskTrigger `
+        -Daily -At 8:16PM
+
+
+    $taskPricipal = New-ScheduledTaskPrincipal `
+        -UserId "SYSTEM" -RunLevel Highest
+
+
+    $task = New-ScheduledTask `
+        -Action $actionToBePerformed `
+        -Trigger $taskTrigger `
+        -Principal $taskPricipal
+
+
+    Register-ScheduledTask -TaskName "Backup Files" -InputObject $task
+
+}
+
+#create-task
+
+function get-failed-loggins{
+
+    $startTimeOfScope = (get-date).AddHours(-24)
+
+    $failedEvents = Get-WinEvent `
+                -FilterHashtable `
+                    @{ 
+                        LogName = 'Security'
+                        ID = 4625 
+                        StartTime = $startTimeOfScope
+                    }
+                      
+   
+   $failedEvents | Select-Object TimeCreated,
+        @{Name="Username";Expression={$_.Properties[5].value}},
+        @{Name="IPAddress";Expression={$_.Properties[19].value}},
+        @{Name="FailureReason";Expression={$_.Properties[8].value}} | Format-Table -AutoSize
+
 
 }
 
 
-configure-dhcp-service
+get-failed-loggins
+
 
 
